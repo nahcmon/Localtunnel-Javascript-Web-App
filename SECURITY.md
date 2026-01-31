@@ -6,8 +6,8 @@
 
 As of 2026-01-31, this project has the following known dependency vulnerabilities:
 
-#### 1. Axios (via localtunnel dependency)
-- **Severity**: High
+#### Axios (via localtunnel dependency)
+- **Severity**: High (2 vulnerabilities)
 - **Affected**: axios <=0.29.0
 - **Issues**:
   - CSRF vulnerability (GHSA-wf5p-g6vw-rhxx)
@@ -18,19 +18,18 @@ As of 2026-01-31, this project has the following known dependency vulnerabilitie
   - Always use authentication profiles for sensitive services
   - Monitor tunnel access via logs
   - Only create tunnels when actively needed
-- **Status**: Waiting for localtunnel package update
+  - Fix would require downgrading to localtunnel 1.8.3 (breaking change)
+- **Status**: Waiting for localtunnel package update to use axios >=0.30.0
 
-#### 2. Tar (via bcrypt build dependencies)
-- **Severity**: High
-- **Affected**: tar <=7.5.6
-- **Issues**:
-  - Arbitrary file overwrite vulnerabilities
-  - Symlink poisoning
-- **Mitigation**:
-  - These vulnerabilities affect bcrypt's build-time dependencies only
-  - Not exploitable at runtime in normal operation
-  - Only relevant during npm install/build phase
-- **Status**: Waiting for bcrypt package update
+### Fixed Vulnerabilities
+
+The following vulnerabilities have been resolved in recent updates:
+
+#### ✅ Tar (bcrypt build dependencies) - FIXED
+- **Fixed in**: v1.0.1 (2026-01-31)
+- **Solution**: Upgraded bcrypt from v5.1.1 to v6.0.0
+- **Previous issue**: tar <=7.5.6 arbitrary file overwrite vulnerabilities
+- **Impact**: Removed 3 high-severity vulnerabilities
 
 ### Security Recommendations
 
