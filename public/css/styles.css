@@ -90,6 +90,24 @@ body {
     font-size: 1.125rem;
 }
 
+/* Notice Banner */
+.notice-banner {
+    max-width: 800px;
+    margin: var(--spacing-md) auto 0;
+    padding: var(--spacing-md);
+    background: rgba(237, 137, 54, 0.1);
+    border: 1px solid var(--warning);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.notice-banner strong {
+    color: var(--warning);
+}
+
 /* Tabs */
 .tabs {
     display: flex;

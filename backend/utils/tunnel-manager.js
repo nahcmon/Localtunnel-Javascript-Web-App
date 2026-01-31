@@ -77,16 +77,21 @@ export async function createTunnel(tunnelId, port, subdomain = null, authProfile
 export async function closeTunnel(tunnelId) {
   const tunnel = activeTunnels.get(tunnelId);
 
+  console.log(`[CLOSE] Attempting to close tunnel ${tunnelId}, exists: ${!!tunnel}`);
+
   if (!tunnel) {
+    console.log(`[CLOSE] Tunnel ${tunnelId} not found in active tunnels`);
     throw new Error('Tunnel not found or already closed');
   }
 
   try {
     // Close the tunnel
+    console.log(`[CLOSE] Calling tunnel.close() for ${tunnelId}`);
     tunnel.close();
 
     // Remove from active tunnels
     activeTunnels.delete(tunnelId);
+    console.log(`[CLOSE] Removed ${tunnelId} from active tunnels. Remaining: ${activeTunnels.size}`);
 
     // Update database
     tunnelOps.updateStatus(tunnelId, 'closed');
@@ -94,8 +99,10 @@ export async function closeTunnel(tunnelId) {
     // Log closure
     logOps.create(tunnelId, 'closed', 'Tunnel closed by user');
 
+    console.log(`[CLOSE] Successfully closed tunnel ${tunnelId}`);
     return { success: true };
   } catch (error) {
+    console.error(`[CLOSE] Error closing tunnel ${tunnelId}:`, error);
     logOps.create(tunnelId, 'error', `Error closing tunnel: ${error.message}`);
     throw error;
   }
@@ -107,7 +114,10 @@ export async function closeTunnel(tunnelId) {
 export async function pauseTunnel(tunnelId) {
   const tunnel = activeTunnels.get(tunnelId);
 
+  console.log(`[PAUSE] Attempting to pause tunnel ${tunnelId}, exists: ${!!tunnel}`);
+
   if (!tunnel) {
+    console.log(`[PAUSE] Tunnel ${tunnelId} not found in active tunnels`);
     throw new Error('Tunnel not found or already paused');
   }
 
@@ -119,12 +129,15 @@ export async function pauseTunnel(tunnelId) {
       subdomain: tunnelData.subdomain,
       authProfileId: tunnelData.auth_profile_id
     });
+    console.log(`[PAUSE] Stored config for ${tunnelId}:`, pausedTunnels.get(tunnelId));
 
     // Close the localtunnel connection
+    console.log(`[PAUSE] Calling tunnel.close() for ${tunnelId}`);
     tunnel.close();
 
     // Remove from active tunnels
     activeTunnels.delete(tunnelId);
+    console.log(`[PAUSE] Removed ${tunnelId} from active tunnels. Remaining: ${activeTunnels.size}`);
 
     // Update database status
     tunnelOps.updateStatus(tunnelId, 'paused');
@@ -132,8 +145,10 @@ export async function pauseTunnel(tunnelId) {
     // Log pause
     logOps.create(tunnelId, 'paused', 'Tunnel paused by user');
 
+    console.log(`[PAUSE] Successfully paused tunnel ${tunnelId}`);
     return { success: true };
   } catch (error) {
+    console.error(`[PAUSE] Error pausing tunnel ${tunnelId}:`, error);
     logOps.create(tunnelId, 'error', `Error pausing tunnel: ${error.message}`);
     throw error;
   }
