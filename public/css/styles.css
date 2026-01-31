@@ -624,6 +624,23 @@ body {
     color: white;
 }
 
+.log-entry.password .log-type {
+    background: var(--warning);
+    color: white;
+}
+
+.log-entry.password .log-message {
+    font-weight: 600;
+    color: var(--warning);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.log-entry.info .log-type {
+    background: var(--info);
+    color: white;
+}
+
 .log-message {
     color: var(--text-secondary);
 }

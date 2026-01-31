@@ -20,6 +20,17 @@ export async function createTunnel(tunnelId, port, subdomain = null, authProfile
       port: port,
     };
 
+    // Use custom localtunnel server if configured (defaults to self-hosted if available)
+    const customHost = process.env.LOCALTUNNEL_HOST || process.env.LT_HOST;
+    if (customHost) {
+      options.host = customHost;
+      console.log(`[TUNNEL] Using custom localtunnel host: ${customHost}`);
+      logOps.create(tunnelId, 'info', `Using custom host: ${customHost}`);
+    } else {
+      console.log(`[TUNNEL] Using default localtunnel.me host`);
+      logOps.create(tunnelId, 'info', 'Using public localtunnel.me host');
+    }
+
     if (subdomain) {
       options.subdomain = subdomain;
     }
@@ -40,6 +51,28 @@ export async function createTunnel(tunnelId, port, subdomain = null, authProfile
 
     // Log successful creation
     logOps.create(tunnelId, 'created', `Tunnel created successfully: ${tunnel.url}`);
+
+    // Try to fetch tunnel password (if using loca.lt)
+    if (tunnel.url.includes('loca.lt')) {
+      try {
+        const passwordUrl = 'https://loca.lt/mytunnelpassword';
+        console.log(`[TUNNEL] Fetching password from ${passwordUrl}`);
+
+        const response = await fetch(passwordUrl);
+        if (response.ok) {
+          const password = await response.text();
+          if (password && password.trim()) {
+            console.log(`[TUNNEL] Password for ${tunnel.url}: ${password}`);
+            logOps.create(tunnelId, 'password', `Tunnel password: ${password.trim()}`);
+          } else {
+            logOps.create(tunnelId, 'info', 'No password required for this tunnel');
+          }
+        }
+      } catch (err) {
+        console.log(`[TUNNEL] Could not fetch password: ${err.message}`);
+        logOps.create(tunnelId, 'info', 'Could not auto-fetch password. If prompted, visit https://loca.lt/mytunnelpassword');
+      }
+    }
 
     // Initialize stats for this tunnel
     statsOps.create(tunnelId);
@@ -173,6 +206,13 @@ export async function resumeTunnel(tunnelId) {
       port: config.port,
     };
 
+    // Use custom localtunnel server if configured
+    const customHost = process.env.LOCALTUNNEL_HOST || process.env.LT_HOST;
+    if (customHost) {
+      options.host = customHost;
+      console.log(`[RESUME] Using custom localtunnel host: ${customHost}`);
+    }
+
     if (config.subdomain) {
       options.subdomain = config.subdomain;
     }
@@ -192,6 +232,23 @@ export async function resumeTunnel(tunnelId) {
 
     // Log successful resume
     logOps.create(tunnelId, 'resumed', `Tunnel resumed successfully: ${tunnel.url}`);
+
+    // Try to fetch tunnel password (if using loca.lt)
+    if (tunnel.url.includes('loca.lt')) {
+      try {
+        const passwordUrl = 'https://loca.lt/mytunnelpassword';
+        const response = await fetch(passwordUrl);
+        if (response.ok) {
+          const password = await response.text();
+          if (password && password.trim()) {
+            console.log(`[RESUME] Password for ${tunnel.url}: ${password}`);
+            logOps.create(tunnelId, 'password', `Tunnel password: ${password.trim()}`);
+          }
+        }
+      } catch (err) {
+        console.log(`[RESUME] Could not fetch password: ${err.message}`);
+      }
+    }
 
     // Handle tunnel events
     tunnel.on('close', () => {
