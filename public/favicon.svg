@@ -1,0 +1,33 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="128" height="128" rx="28" fill="url(#gradient)"/>
+
+  <!-- Tunnel circles (concentric) -->
+  <circle cx="64" cy="50" r="32" stroke="#E8DEFF" stroke-width="2.5" fill="none" opacity="0.9"/>
+  <circle cx="64" cy="50" r="26" stroke="#E8DEFF" stroke-width="2" fill="none" opacity="0.8"/>
+  <circle cx="64" cy="50" r="20" stroke="#E8DEFF" stroke-width="2" fill="none" opacity="0.7"/>
+  <circle cx="64" cy="50" r="14" stroke="#E8DEFF" stroke-width="2" fill="none" opacity="0.6"/>
+
+  <!-- Tunnel arc breaks (to show tunnel effect) -->
+  <path d="M 48 42 Q 48 40, 50 40" stroke="#7C3AED" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <path d="M 52 38 Q 52 36, 54 36" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" fill="none"/>
+
+  <!-- Lock body -->
+  <rect x="52" y="82" width="24" height="28" rx="3" fill="#F8F9FA"/>
+
+  <!-- Lock shackle -->
+  <path d="M 58 82 V 72 C 58 68.686 60.686 66 64 66 C 67.314 66 70 68.686 70 72 V 82"
+        stroke="#F8F9FA" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  <!-- Keyhole -->
+  <circle cx="64" cy="92" r="3.5" fill="#6366F1"/>
+  <rect x="62.5" y="94" width="3" height="8" rx="1.5" fill="#6366F1"/>
+
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+</svg>
