@@ -50,9 +50,22 @@ db.exec(`
     FOREIGN KEY (tunnel_id) REFERENCES tunnels(id)
   );
 
+  CREATE TABLE IF NOT EXISTS tunnel_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tunnel_id TEXT NOT NULL,
+    total_requests INTEGER DEFAULT 0,
+    total_connections INTEGER DEFAULT 0,
+    bytes_sent INTEGER DEFAULT 0,
+    bytes_received INTEGER DEFAULT 0,
+    last_request_at INTEGER,
+    unique_ips TEXT DEFAULT '[]',
+    FOREIGN KEY (tunnel_id) REFERENCES tunnels(id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_tunnels_status ON tunnels(status);
   CREATE INDEX IF NOT EXISTS idx_tunnel_logs_tunnel_id ON tunnel_logs(tunnel_id);
   CREATE INDEX IF NOT EXISTS idx_auth_profiles_name ON auth_profiles(name);
+  CREATE INDEX IF NOT EXISTS idx_tunnel_stats_tunnel_id ON tunnel_stats(tunnel_id);
 `);
 
 // Prepared statements for auth profiles
@@ -96,7 +109,7 @@ const getActiveTunnels = db.prepare(`
   SELECT t.*, a.name as auth_profile_name, a.username as auth_username
   FROM tunnels t
   LEFT JOIN auth_profiles a ON t.auth_profile_id = a.id
-  WHERE t.status = 'active'
+  WHERE t.status IN ('active', 'paused')
   ORDER BY t.created_at DESC
 `);
 
@@ -119,6 +132,36 @@ const getTunnelLogs = db.prepare(`
   WHERE tunnel_id = ?
   ORDER BY timestamp DESC
   LIMIT ?
+`);
+
+// Prepared statements for tunnel stats
+const createTunnelStats = db.prepare(`
+  INSERT INTO tunnel_stats (tunnel_id)
+  VALUES (?)
+`);
+
+const getTunnelStats = db.prepare(`
+  SELECT * FROM tunnel_stats WHERE tunnel_id = ?
+`);
+
+const updateTunnelStats = db.prepare(`
+  UPDATE tunnel_stats
+  SET total_requests = ?, total_connections = ?, bytes_sent = ?,
+      bytes_received = ?, last_request_at = ?, unique_ips = ?
+  WHERE tunnel_id = ?
+`);
+
+const incrementTunnelRequests = db.prepare(`
+  UPDATE tunnel_stats
+  SET total_requests = total_requests + 1,
+      last_request_at = ?
+  WHERE tunnel_id = ?
+`);
+
+const incrementTunnelConnections = db.prepare(`
+  UPDATE tunnel_stats
+  SET total_connections = total_connections + 1
+  WHERE tunnel_id = ?
 `);
 
 // Database operations with error handling
@@ -197,6 +240,58 @@ export const logOps = {
 
   getForTunnel(tunnelId, limit = 50) {
     return getTunnelLogs.all(tunnelId, limit);
+  }
+};
+
+export const statsOps = {
+  create(tunnelId) {
+    createTunnelStats.run(tunnelId);
+  },
+
+  get(tunnelId) {
+    let stats = getTunnelStats.get(tunnelId);
+    if (!stats) {
+      this.create(tunnelId);
+      stats = getTunnelStats.get(tunnelId);
+    }
+    // Parse unique_ips JSON
+    if (stats && stats.unique_ips) {
+      try {
+        stats.unique_ips = JSON.parse(stats.unique_ips);
+      } catch (e) {
+        stats.unique_ips = [];
+      }
+    }
+    return stats || {
+      tunnel_id: tunnelId,
+      total_requests: 0,
+      total_connections: 0,
+      bytes_sent: 0,
+      bytes_received: 0,
+      last_request_at: null,
+      unique_ips: []
+    };
+  },
+
+  incrementRequests(tunnelId) {
+    incrementTunnelRequests.run(Date.now(), tunnelId);
+  },
+
+  incrementConnections(tunnelId) {
+    incrementTunnelConnections.run(tunnelId);
+  },
+
+  update(tunnelId, stats) {
+    const uniqueIpsJson = JSON.stringify(stats.unique_ips || []);
+    updateTunnelStats.run(
+      stats.total_requests || 0,
+      stats.total_connections || 0,
+      stats.bytes_sent || 0,
+      stats.bytes_received || 0,
+      stats.last_request_at || null,
+      uniqueIpsJson,
+      tunnelId
+    );
   }
 };
 

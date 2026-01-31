@@ -56,17 +56,40 @@ function initEventDelegation() {
     });
 
     // Event delegation for tunnel actions
-    document.getElementById('tunnels-list').addEventListener('click', (e) => {
+    document.getElementById('tunnels-list').addEventListener('click', async (e) => {
         const closeTunnelBtn = e.target.closest('.close-tunnel');
         if (closeTunnelBtn) {
             const tunnelId = closeTunnelBtn.dataset.tunnelId;
-            closeTunnel(tunnelId);
+            await closeTunnel(tunnelId);
+            return;
+        }
+
+        const pauseTunnelBtn = e.target.closest('.pause-tunnel');
+        if (pauseTunnelBtn) {
+            const tunnelId = pauseTunnelBtn.dataset.tunnelId;
+            await pauseTunnel(tunnelId);
+            return;
+        }
+
+        const resumeTunnelBtn = e.target.closest('.resume-tunnel');
+        if (resumeTunnelBtn) {
+            const tunnelId = resumeTunnelBtn.dataset.tunnelId;
+            await resumeTunnel(tunnelId);
+            return;
         }
 
         const copyBtn = e.target.closest('.copy-btn');
         if (copyBtn) {
             const url = copyBtn.dataset.url;
             copyToClipboard(url);
+            return;
+        }
+
+        const toggleLogsBtn = e.target.closest('.toggle-logs');
+        if (toggleLogsBtn) {
+            const tunnelId = toggleLogsBtn.dataset.tunnelId;
+            await toggleLogs(tunnelId);
+            return;
         }
     });
 }
@@ -268,12 +291,16 @@ function renderTunnels() {
         return;
     }
 
-    container.innerHTML = tunnels.map(tunnel => `
+    container.innerHTML = tunnels.map(tunnel => {
+        const isPaused = tunnel.status === 'paused';
+        const stats = tunnel.stats || {};
+
+        return `
         <div class="tunnel-item">
             <div class="tunnel-header">
                 <div class="tunnel-info">
                     <h3>Port ${tunnel.port}</h3>
-                    ${tunnel.url ? `
+                    ${tunnel.url && !isPaused ? `
                         <div class="tunnel-url">
                             <a href="${escapeHtml(tunnel.url)}" target="_blank" rel="noopener noreferrer">
                                 ${escapeHtml(tunnel.url)}
@@ -282,6 +309,10 @@ function renderTunnels() {
                                 Copy
                             </button>
                         </div>
+                    ` : isPaused ? `
+                        <div class="tunnel-url paused-notice">
+                            <span>⏸ Tunnel paused - Click Resume to reactivate</span>
+                        </div>
                     ` : ''}
                 </div>
                 <span class="status-badge ${tunnel.status}">
@@ -289,6 +320,25 @@ function renderTunnels() {
                     ${tunnel.status}
                 </span>
             </div>
+
+            <div class="tunnel-stats">
+                <div class="stat-item">
+                    <span class="stat-icon">🔗</span>
+                    <span class="stat-value">${stats.total_connections || 0}</span>
+                    <span class="stat-label">Connections</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">📊</span>
+                    <span class="stat-value">${stats.total_requests || 0}</span>
+                    <span class="stat-label">Requests</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">⏱</span>
+                    <span class="stat-value">${stats.last_request_at ? formatDate(stats.last_request_at) : 'Never'}</span>
+                    <span class="stat-label">Last Activity</span>
+                </div>
+            </div>
+
             <div class="tunnel-details">
                 ${tunnel.subdomain ? `
                     <div class="detail-item">
@@ -307,16 +357,43 @@ function renderTunnels() {
                     <span class="detail-value">${formatDate(tunnel.created_at)}</span>
                 </div>
             </div>
+
             <div class="tunnel-actions">
+                ${!isPaused ? `
+                    <button class="btn btn-warning btn-sm pause-tunnel" data-tunnel-id="${tunnel.id}">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6"/>
+                        </svg>
+                        Pause
+                    </button>
+                ` : `
+                    <button class="btn btn-success btn-sm resume-tunnel" data-tunnel-id="${tunnel.id}">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Resume
+                    </button>
+                `}
+                <button class="btn btn-secondary btn-sm toggle-logs" data-tunnel-id="${tunnel.id}">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Logs
+                </button>
                 <button class="btn btn-danger btn-sm close-tunnel" data-tunnel-id="${tunnel.id}">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
-                    Close Tunnel
+                    Delete
                 </button>
             </div>
+
+            <div class="tunnel-logs" id="logs-${tunnel.id}" style="display: none;">
+                <div class="logs-loading">Loading logs...</div>
+            </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 // Create tunnel
@@ -362,7 +439,7 @@ async function createTunnel() {
 
 // Close tunnel
 async function closeTunnel(id) {
-    if (!confirm('Are you sure you want to close this tunnel?')) {
+    if (!confirm('Are you sure you want to permanently delete this tunnel?')) {
         return;
     }
 
@@ -377,10 +454,110 @@ async function closeTunnel(id) {
             throw new Error(result.error || 'Failed to close tunnel');
         }
 
-        showToast('Success', 'Tunnel closed successfully', 'success');
+        showToast('Success', 'Tunnel deleted successfully', 'success');
         await loadTunnels();
     } catch (error) {
         showToast('Error', error.message, 'error');
+    }
+}
+
+// Pause tunnel
+async function pauseTunnel(id) {
+    try {
+        const response = await fetch(`${API_BASE}/tunnels/${id}/pause`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to pause tunnel');
+        }
+
+        showToast('Success', 'Tunnel paused successfully', 'success');
+        await loadTunnels();
+    } catch (error) {
+        showToast('Error', error.message, 'error');
+    }
+}
+
+// Resume tunnel
+async function resumeTunnel(id) {
+    try {
+        const response = await fetch(`${API_BASE}/tunnels/${id}/resume`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to resume tunnel');
+        }
+
+        showToast('Success', `Tunnel resumed: ${result.tunnel.url}`, 'success');
+        await loadTunnels();
+    } catch (error) {
+        showToast('Error', error.message, 'error');
+    }
+}
+
+// Toggle logs display
+async function toggleLogs(tunnelId) {
+    const logsContainer = document.getElementById(`logs-${tunnelId}`);
+
+    if (logsContainer.style.display === 'none') {
+        // Show logs
+        logsContainer.style.display = 'block';
+        await loadLogsForTunnel(tunnelId);
+    } else {
+        // Hide logs
+        logsContainer.style.display = 'none';
+    }
+}
+
+// Load logs for a specific tunnel
+async function loadLogsForTunnel(tunnelId) {
+    const logsContainer = document.getElementById(`logs-${tunnelId}`);
+
+    try {
+        const response = await fetch(`${API_BASE}/tunnels/${tunnelId}/logs?limit=20`);
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error);
+        }
+
+        const logs = data.logs;
+
+        if (logs.length === 0) {
+            logsContainer.innerHTML = `
+                <div class="logs-empty">
+                    <p>No logs yet</p>
+                </div>
+            `;
+            return;
+        }
+
+        logsContainer.innerHTML = `
+            <div class="logs-header">
+                <h4>Event Logs (Last 20)</h4>
+            </div>
+            <div class="logs-list">
+                ${logs.map(log => `
+                    <div class="log-entry ${log.event_type}">
+                        <span class="log-time">${formatTime(log.timestamp)}</span>
+                        <span class="log-type">${escapeHtml(log.event_type)}</span>
+                        <span class="log-message">${escapeHtml(log.message || '')}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        logsContainer.innerHTML = `
+            <div class="logs-error">
+                <p>Error loading logs: ${escapeHtml(error.message)}</p>
+            </div>
+        `;
     }
 }
 
@@ -454,4 +631,9 @@ function formatDate(timestamp) {
 
     // More than 24 hours
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+}
+
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString();
 }
