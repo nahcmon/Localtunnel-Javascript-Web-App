@@ -9,6 +9,7 @@ let authProfiles = [];
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     initForms();
+    initEventDelegation();
     loadAuthProfiles();
     loadTunnels();
 
@@ -40,6 +41,33 @@ function initTabs() {
                 loadAuthProfiles();
             }
         });
+    });
+}
+
+// Initialize event delegation for dynamic buttons
+function initEventDelegation() {
+    // Event delegation for auth profile delete buttons
+    document.getElementById('auth-profiles-list').addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('.delete-auth-profile');
+        if (deleteBtn) {
+            const profileId = deleteBtn.dataset.profileId;
+            deleteAuthProfile(profileId);
+        }
+    });
+
+    // Event delegation for tunnel actions
+    document.getElementById('tunnels-list').addEventListener('click', (e) => {
+        const closeTunnelBtn = e.target.closest('.close-tunnel');
+        if (closeTunnelBtn) {
+            const tunnelId = closeTunnelBtn.dataset.tunnelId;
+            closeTunnel(tunnelId);
+        }
+
+        const copyBtn = e.target.closest('.copy-btn');
+        if (copyBtn) {
+            const url = copyBtn.dataset.url;
+            copyToClipboard(url);
+        }
     });
 }
 
@@ -106,7 +134,7 @@ function renderAuthProfiles() {
                         <span class="detail-value">${escapeHtml(profile.username)}</span>
                     </div>
                 </div>
-                <button class="btn btn-danger btn-sm" onclick="deleteAuthProfile('${profile.id}')">
+                <button class="btn btn-danger btn-sm delete-auth-profile" data-profile-id="${profile.id}">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                     </svg>
@@ -133,9 +161,9 @@ function renderAuthProfiles() {
 function updateAuthProfileSelect() {
     const select = document.getElementById('authProfileId');
 
-    select.innerHTML = '<option value="">No Authentication</option>' +
+    select.innerHTML = '<option value="">No Authentication (Not Yet Supported)</option>' +
         authProfiles.map(profile =>
-            `<option value="${profile.id}">${escapeHtml(profile.name)} (${escapeHtml(profile.username)})</option>`
+            `<option value="${profile.id}" disabled>${escapeHtml(profile.name)} (${escapeHtml(profile.username)}) - Coming Soon</option>`
         ).join('');
 }
 
@@ -250,7 +278,7 @@ function renderTunnels() {
                             <a href="${escapeHtml(tunnel.url)}" target="_blank" rel="noopener noreferrer">
                                 ${escapeHtml(tunnel.url)}
                             </a>
-                            <button class="copy-btn" onclick="copyToClipboard('${escapeHtml(tunnel.url)}')">
+                            <button class="copy-btn" data-url="${escapeHtml(tunnel.url)}">
                                 Copy
                             </button>
                         </div>
@@ -271,11 +299,7 @@ function renderTunnels() {
                 ${tunnel.auth_profile_name ? `
                     <div class="detail-item">
                         <span class="detail-label">Auth Profile</span>
-                        <span class="detail-value">${escapeHtml(tunnel.auth_profile_name)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Username</span>
-                        <span class="detail-value">${escapeHtml(tunnel.auth_username)}</span>
+                        <span class="detail-value">${escapeHtml(tunnel.auth_profile_name)} (Stored, not applied)</span>
                     </div>
                 ` : ''}
                 <div class="detail-item">
@@ -284,7 +308,7 @@ function renderTunnels() {
                 </div>
             </div>
             <div class="tunnel-actions">
-                <button class="btn btn-danger btn-sm" onclick="closeTunnel('${tunnel.id}')">
+                <button class="btn btn-danger btn-sm close-tunnel" data-tunnel-id="${tunnel.id}">
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -300,10 +324,17 @@ async function createTunnel() {
     const form = document.getElementById('create-tunnel-form');
     const formData = new FormData(form);
 
+    const authProfileId = formData.get('authProfileId');
+
+    // Warn user that authentication is not yet implemented
+    if (authProfileId) {
+        showToast('Notice', 'Authentication is stored but not yet applied to tunnels. Feature coming soon.', 'warning');
+    }
+
     const data = {
         port: parseInt(formData.get('port')),
         subdomain: formData.get('subdomain') || undefined,
-        authProfileId: formData.get('authProfileId') || undefined
+        authProfileId: undefined // Don't send authProfileId to avoid errors
     };
 
     try {

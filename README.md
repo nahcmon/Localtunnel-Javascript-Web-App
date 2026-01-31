@@ -268,8 +268,9 @@ GET /api/health
 
 - **Localtunnel Reliability**: Localtunnel is designed for development/testing, not production use
 - **No User Authentication**: The app itself doesn't require login (add if needed for multi-user scenarios)
-- **Public URLs**: Anyone with the tunnel URL can access it (unless authentication is configured)
+- **Public URLs**: Anyone with the tunnel URL can access it
 - **Tunnel Persistence**: Tunnels are closed when the server restarts
+- **⚠️ Authentication Not Yet Implemented**: Auth profiles can be created and stored, but are not yet applied to tunnels. This feature requires implementing a local HTTP proxy that handles basic authentication before forwarding to localtunnel. Currently in development.
 
 ### Security Best Practices
 
