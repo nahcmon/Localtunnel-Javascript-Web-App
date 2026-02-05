@@ -12,15 +12,15 @@ const router = express.Router();
  * POST /api/tunnels
  */
 router.post('/', tunnelValidation, asyncHandler(async (req, res) => {
-  const { port, subdomain, authProfileId } = req.body;
+  const { target, subdomain, authProfileId } = req.body;
 
   const tunnelId = uuidv4();
 
   // Create tunnel record in database
-  tunnelOps.create(tunnelId, port, subdomain || null, authProfileId || null);
+  tunnelOps.create(tunnelId, target, subdomain, authProfileId || null);
 
-  // Start the actual tunnel
-  const tunnel = await createTunnel(tunnelId, port, subdomain, authProfileId);
+  // Start the actual tunnel (with proxy for host header rewriting)
+  const tunnel = await createTunnel(tunnelId, target, subdomain, authProfileId);
 
   res.status(201).json({
     success: true,

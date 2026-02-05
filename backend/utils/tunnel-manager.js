@@ -1,5 +1,6 @@
 import localtunnel from 'localtunnel';
 import { tunnelOps, logOps, authProfileOps, statsOps } from '../models/database.js';
+import { createProxyServer, closeProxyServer, closeAllProxies } from './proxy-manager.js';
 
 // Store active tunnel instances
 const activeTunnels = new Map();
@@ -10,17 +11,22 @@ const pausedTunnels = new Map();
 /**
  * Create and start a new tunnel
  */
-export async function createTunnel(tunnelId, port, subdomain = null, authProfileId = null) {
+export async function createTunnel(tunnelId, target, subdomain, authProfileId = null) {
   try {
     // Log tunnel creation attempt
-    logOps.create(tunnelId, 'creating', `Attempting to create tunnel on port ${port}`);
+    logOps.create(tunnelId, 'creating', `Attempting to create tunnel for target: ${target}`);
+
+    // Create a proxy server that handles host header rewriting
+    console.log(`[TUNNEL] Creating proxy for target: ${target}`);
+    const proxyPort = await createProxyServer(tunnelId, target);
 
     // Configure tunnel options
     const options = {
-      port: port,
+      port: proxyPort, // Connect localtunnel to our proxy, not the original target
+      subdomain: subdomain, // Subdomain is now required
     };
 
-    // Use custom localtunnel server if configured (defaults to self-hosted if available)
+    // Use custom localtunnel server if configured
     const customHost = process.env.LOCALTUNNEL_HOST || process.env.LT_HOST;
     if (customHost) {
       options.host = customHost;
@@ -31,11 +37,7 @@ export async function createTunnel(tunnelId, port, subdomain = null, authProfile
       logOps.create(tunnelId, 'info', 'Using public localtunnel.me host');
     }
 
-    if (subdomain) {
-      options.subdomain = subdomain;
-    }
-
-    // Start the localtunnel
+    // Start the localtunnel (connects to our proxy)
     const tunnel = await localtunnel(options);
 
     // Store tunnel instance
@@ -92,7 +94,7 @@ export async function createTunnel(tunnelId, port, subdomain = null, authProfile
     return {
       id: tunnelId,
       url: tunnel.url,
-      port: port,
+      target: target,
       subdomain: subdomain,
       authProfileId: authProfileId,
       status: 'active'
@@ -100,6 +102,8 @@ export async function createTunnel(tunnelId, port, subdomain = null, authProfile
   } catch (error) {
     logOps.create(tunnelId, 'error', `Failed to create tunnel: ${error.message}`);
     tunnelOps.updateStatus(tunnelId, 'error');
+    // Clean up proxy if tunnel creation failed
+    closeProxyServer(tunnelId);
     throw error;
   }
 }
@@ -121,6 +125,9 @@ export async function closeTunnel(tunnelId) {
     // Close the tunnel
     console.log(`[CLOSE] Calling tunnel.close() for ${tunnelId}`);
     tunnel.close();
+
+    // Close the proxy server
+    closeProxyServer(tunnelId);
 
     // Remove from active tunnels
     activeTunnels.delete(tunnelId);
@@ -158,7 +165,7 @@ export async function pauseTunnel(tunnelId) {
     // Store tunnel configuration for resuming
     const tunnelData = tunnelOps.get(tunnelId);
     pausedTunnels.set(tunnelId, {
-      port: tunnelData.port,
+      target: tunnelData.target,
       subdomain: tunnelData.subdomain,
       authProfileId: tunnelData.auth_profile_id
     });
@@ -167,6 +174,9 @@ export async function pauseTunnel(tunnelId) {
     // Close the localtunnel connection
     console.log(`[PAUSE] Calling tunnel.close() for ${tunnelId}`);
     tunnel.close();
+
+    // Close the proxy server
+    closeProxyServer(tunnelId);
 
     // Remove from active tunnels
     activeTunnels.delete(tunnelId);
@@ -199,11 +209,15 @@ export async function resumeTunnel(tunnelId) {
 
   try {
     // Log resume attempt
-    logOps.create(tunnelId, 'resuming', `Attempting to resume tunnel on port ${config.port}`);
+    logOps.create(tunnelId, 'resuming', `Attempting to resume tunnel for target: ${config.target}`);
+
+    // Create a proxy server for the target
+    const proxyPort = await createProxyServer(tunnelId, config.target);
 
     // Configure tunnel options
     const options = {
-      port: config.port,
+      port: proxyPort,
+      subdomain: config.subdomain,
     };
 
     // Use custom localtunnel server if configured
@@ -211,10 +225,6 @@ export async function resumeTunnel(tunnelId) {
     if (customHost) {
       options.host = customHost;
       console.log(`[RESUME] Using custom localtunnel host: ${customHost}`);
-    }
-
-    if (config.subdomain) {
-      options.subdomain = config.subdomain;
     }
 
     // Start the localtunnel
@@ -266,13 +276,15 @@ export async function resumeTunnel(tunnelId) {
     return {
       id: tunnelId,
       url: tunnel.url,
-      port: config.port,
+      target: config.target,
       subdomain: config.subdomain,
       status: 'active'
     };
   } catch (error) {
     logOps.create(tunnelId, 'error', `Failed to resume tunnel: ${error.message}`);
     tunnelOps.updateStatus(tunnelId, 'error');
+    // Clean up proxy if resume failed
+    closeProxyServer(tunnelId);
     throw error;
   }
 }
@@ -307,6 +319,7 @@ export function closeAllTunnels() {
   for (const [tunnelId, tunnel] of activeTunnels.entries()) {
     try {
       tunnel.close();
+      closeProxyServer(tunnelId);
       tunnelOps.updateStatus(tunnelId, 'closed');
       logOps.create(tunnelId, 'closed', 'Tunnel closed due to server shutdown');
     } catch (error) {
@@ -314,4 +327,5 @@ export function closeAllTunnels() {
     }
   }
   activeTunnels.clear();
+  closeAllProxies();
 }

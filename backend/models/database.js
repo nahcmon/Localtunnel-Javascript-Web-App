@@ -31,8 +31,9 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS tunnels (
     id TEXT PRIMARY KEY,
-    port INTEGER NOT NULL,
-    subdomain TEXT,
+    port INTEGER,
+    target TEXT NOT NULL,
+    subdomain TEXT NOT NULL,
     url TEXT,
     auth_profile_id TEXT,
     status TEXT NOT NULL,
@@ -68,6 +69,23 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tunnel_stats_tunnel_id ON tunnel_stats(tunnel_id);
 `);
 
+// Migration: Add target column if it doesn't exist
+try {
+  db.exec(`ALTER TABLE tunnels ADD COLUMN target TEXT`);
+  console.log('[DB] Migration: Added target column to tunnels table');
+} catch (e) {
+  // Column already exists, ignore
+}
+
+// Migration: Update existing rows to have target from port
+try {
+  db.exec(`UPDATE tunnels SET target = port WHERE target IS NULL AND port IS NOT NULL`);
+  db.exec(`UPDATE tunnels SET subdomain = 'legacy-' || substr(id, 1, 8) WHERE subdomain IS NULL OR subdomain = ''`);
+  console.log('[DB] Migration: Updated existing tunnels with target and subdomain');
+} catch (e) {
+  // Already migrated, ignore
+}
+
 // Prepared statements for auth profiles
 const createAuthProfile = db.prepare(`
   INSERT INTO auth_profiles (id, name, username, password_hash, created_at)
@@ -97,8 +115,8 @@ const updateAuthProfileLastUsed = db.prepare(`
 
 // Prepared statements for tunnels
 const createTunnel = db.prepare(`
-  INSERT INTO tunnels (id, port, subdomain, url, auth_profile_id, status, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO tunnels (id, target, subdomain, port, url, auth_profile_id, status, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const getTunnel = db.prepare(`
@@ -209,10 +227,12 @@ export const authProfileOps = {
 };
 
 export const tunnelOps = {
-  create(id, port, subdomain, authProfileId) {
+  create(id, target, subdomain, authProfileId) {
     const createdAt = Date.now();
-    createTunnel.run(id, port, subdomain, null, authProfileId, 'active', createdAt);
-    return { id, port, subdomain, auth_profile_id: authProfileId, status: 'active', created_at: createdAt };
+    // Extract port if target is a number
+    const port = typeof target === 'number' || /^\d+$/.test(target) ? parseInt(target) : null;
+    createTunnel.run(id, target, subdomain, port, null, authProfileId, 'active', createdAt);
+    return { id, target, port, subdomain, auth_profile_id: authProfileId, status: 'active', created_at: createdAt };
   },
 
   get(id) {

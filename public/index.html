@@ -58,15 +58,15 @@
                     <h2>Create New Tunnel</h2>
                     <form id="create-tunnel-form">
                         <div class="form-group">
-                            <label for="port">Local Port *</label>
-                            <input type="number" id="port" name="port" min="1" max="65535" required placeholder="e.g., 3000">
-                            <small>The local port you want to expose</small>
+                            <label for="subdomain">Subdomain *</label>
+                            <input type="text" id="subdomain" name="subdomain" required pattern="[a-z0-9][a-z0-9-]*[a-z0-9]" minlength="3" maxlength="63" placeholder="my-app">
+                            <small>Your tunnel will be accessible at: <strong>your-subdomain.loca.lt</strong></small>
                         </div>
 
                         <div class="form-group">
-                            <label for="subdomain">Custom Subdomain (Optional)</label>
-                            <input type="text" id="subdomain" name="subdomain" pattern="[a-z0-9][a-z0-9-]*[a-z0-9]" placeholder="my-app">
-                            <small>Leave empty for random subdomain</small>
+                            <label for="target">Target (Port / URL / Hostname) *</label>
+                            <input type="text" id="target" name="target" required placeholder="3000 or http://192.168.1.100:8080 or youtube.com">
+                            <small>Examples: <code>3000</code>, <code>localhost:8080</code>, <code>http://192.168.1.5:3000</code>, <code>https://example.com</code></small>
                         </div>
 
                         <div class="form-group">

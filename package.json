@@ -18,18 +18,19 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.21.2",
-    "localtunnel": "^2.0.2",
-    "helmet": "^8.0.0",
-    "express-rate-limit": "^7.5.0",
     "bcrypt": "^6.0.0",
-    "jsonwebtoken": "^9.0.2",
-    "cookie-parser": "^1.4.7",
     "better-sqlite3": "^11.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
     "express-validator": "^7.2.1",
-    "uuid": "^11.0.5",
-    "cors": "^2.8.5"
+    "helmet": "^8.0.0",
+    "http-proxy": "^1.18.1",
+    "jsonwebtoken": "^9.0.2",
+    "localtunnel": "^2.0.2",
+    "uuid": "^11.0.5"
   },
   "engines": {
     "node": ">=18.0.0"

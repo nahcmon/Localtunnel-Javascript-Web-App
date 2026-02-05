@@ -299,7 +299,7 @@ function renderTunnels() {
         <div class="tunnel-item">
             <div class="tunnel-header">
                 <div class="tunnel-info">
-                    <h3>Port ${tunnel.port}</h3>
+                    <h3>${escapeHtml(tunnel.target || tunnel.port || 'Unknown')}</h3>
                     ${tunnel.url && !isPaused ? `
                         <div class="tunnel-url">
                             <a href="${escapeHtml(tunnel.url)}" target="_blank" rel="noopener noreferrer">
@@ -340,6 +340,10 @@ function renderTunnels() {
             </div>
 
             <div class="tunnel-details">
+                <div class="detail-item">
+                    <span class="detail-label">Target</span>
+                    <span class="detail-value">${escapeHtml(tunnel.target || tunnel.port || 'Unknown')}</span>
+                </div>
                 ${tunnel.subdomain ? `
                     <div class="detail-item">
                         <span class="detail-label">Subdomain</span>
@@ -409,8 +413,8 @@ async function createTunnel() {
     }
 
     const data = {
-        port: parseInt(formData.get('port')),
-        subdomain: formData.get('subdomain') || undefined,
+        target: formData.get('target'),
+        subdomain: formData.get('subdomain'),
         authProfileId: undefined // Don't send authProfileId to avoid errors
     };
 
